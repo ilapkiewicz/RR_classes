@@ -1,3 +1,3 @@
-# Reproducible Research repo template
+#NYSE sector condition and investment opportunities automated report project
 
-This is the starting point for individual RR course repos.
+Project members: Igor Łapkiewicz, Filip Nowakowski
