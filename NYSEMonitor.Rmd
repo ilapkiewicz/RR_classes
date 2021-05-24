@@ -6,6 +6,10 @@ output:
   html_document:
     collapsed: false
     number_sections: true
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
     includes:
        in_header: myheader.html
 ---
@@ -27,14 +31,22 @@ Filip Nowakowski - second year master's student in Data Science and Business Ana
 
 ## Project description
 
-NYSE Monitor project aims to automatically generate reports about different sectors of stock market. A simple change in .Rmd file allows user to swap between pre-coded sectors and generate multiple reports that gather data from selected day until recent most avaible one.
+NYSE Monitor project aims to automatically generate reports about different sectors of stock market. A simple change in .Rmd file allows user to swap between pre-coded sectors and generate multiple reports that gather data from selected day until recent most available one. Because of this no actual data commentary can be seen in the report as everything is automated. Interpretation must be done by you - the reader.
 
 Report is divided into following parts:
 
- __Sector outlook__
+__Sector outlook__
 Basic information and key statistics of the whole sector
     
- __Second Thing __
+__Top Gainers__
+Information and simple forecast of top 5 stocks with highest growth
+ 
+__Top gainers simple trading strategy results__
+Results of simple trading strategy implemented for 5 stocks from previous part
+
+__Non-technical approach__
+A more expaned look at stock analysis employing techniques not based on typical stock charts
+
 ```{r data-acquisition-functions, include=FALSE}
 #install.packages("xts", repos="http://cloud.r-project.org") # for working with time series
 #install.packages("quantmod",repos = "http://cran.us.r-project.org") # for getting Yahoo finance data automatically
@@ -124,10 +136,11 @@ get_tickers <- function(x) {
 
 ```{r data-acquistion-choice, include=FALSE}
 #choce sector of NYSE Stock Market here by number in get_tickers()
-tickers <- get_tickers(2)
+tickers <- get_tickers(1)
 ```
 
 # Sector outlook
+  One look is all it takes. With this simple chart we see every listed company in the chosen sector. Those in green and green-ish colorshad a positive return while those in red and red-ish colors saw a decline in their price.
 ```{r treemap-libs,include=FALSE}
 #install.packages("treemap", repos="http://cloud.r-project.org")
 #install.packages("RColorBrewer", repos="http://cloud.r-project.org")
@@ -170,6 +183,7 @@ treemap(data,
 )
 ```
 
+  To quickly show dynamics of the sector we calculate a quick index for the whole sector which can be seen below.
 ```{r plot-libs, include=FALSE}
 library(ggplot2)
 ```
@@ -190,16 +204,17 @@ ggplot(whole_sector_plot, aes(x=x,y=whole_sector_plot)) +
 
 ## Sector statistics
 
+  In this sub-part of the report you can find a more detailed breakdown of the sector represented in the table below.
 ```{r simple-statistics, include=FALSE}
-gainers <- sum(value>0)
-losers <- sum(value<0)
+gainers <- sum(value>0, na.rm = TRUE)
+losers <- sum(value<0, na.rm = TRUE)
 total <- length(value)
 gainers_avg <- value[value >0]
-gainers_avg <- mean(gainers_avg)
+gainers_avg <- mean(gainers_avg, na.rm = TRUE)
 losers_avg <- value[value <0]
-losers_avg <- mean(losers_avg)
+losers_avg <- mean(losers_avg, na.rm = TRUE)
 sector_avg <- value
-sector_avg <- mean(sector_avg)
+sector_avg <- mean(sector_avg, na.rm = TRUE)
 
 ```
 
@@ -211,6 +226,8 @@ sector_avg <- mean(sector_avg)
 | `r gainers_avg`%  | `r losers_avg`%   | `r sector_avg`% |
 
 # Top gainers
+
+  Most exciting companies in the sector are those whose price saw the biggest growth. Here you can find all information about top 5 gainers.
 ```{r top-gainers, include=FALSE}
 
 group <- colnames(tickers)
@@ -265,6 +282,9 @@ library(forecast)
 
 
 ## Top 5 stocks with biggest gains
+
+  In this section we chart basic information about each of the top 5 gainers along with a simple forecast done with Neural Network model.
+  
 <!-- First top gainer-->
 ### `r tickers_change$ticker_code[1]`
 <p> `r tickers_change$ticker_code[1]` value changed by `r percet_change_1`%</p>
@@ -274,14 +294,9 @@ chartSeries(get(top_gainer_1),
             name=tickers_change$ticker_code[1],
             theme=chartTheme('white'))
 ```
-<br>
-<p>
-  <button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#aA" aria-expanded="false" aria-controls="aA">
-   `r tickers_change$ticker_code[1]` forecast
-  </button>
-</p>
-<div class="collapse" id="aA">
-  <div class="card card-body">
+
+`r tickers_change$ticker_code[1]` forecast
+
 ```{r top-gainer-1-forecast, out.width = '100%', echo=FALSE}
 a <- get(top_gainer_1)
 nnmodel <-nnetar(a[, paste0(top_gainer_1,".Close")])
@@ -304,9 +319,6 @@ dygraph(graph_data, main = "Forecast with Neural Network") %>%
               highlightSeriesOpts = list(strokeWidth = 2)) %>%
   dyOptions(axisLineColor = "navy", gridLineColor = "grey")
 ```
-  </div>
-</div>
-</div>
 
 <!-- Second top gainer-->
 ### `r tickers_change$ticker_code[2]`
@@ -317,14 +329,9 @@ chartSeries(get(top_gainer_2),
             name=tickers_change$ticker_code[2],
             theme=chartTheme('white'))
 ```
-<br>
-<p>
-  <button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#aB" aria-expanded="false" aria-controls="aB">
-   `r tickers_change$ticker_code[2]` forecast
-  </button>
-</p>
-<div class="collapse" id="aB">
-  <div class="card card-body">
+
+`r tickers_change$ticker_code[2]` forecast
+
 ```{r top-gainer-2-forecast, out.width = '100%', echo=FALSE}
 a <- get(top_gainer_2)
 nnmodel <-nnetar(a[, paste0(top_gainer_2,".Close")])
@@ -347,9 +354,7 @@ dygraph(graph_data, main = "Forecast with Neural Network") %>%
               highlightSeriesOpts = list(strokeWidth = 2)) %>%
   dyOptions(axisLineColor = "navy", gridLineColor = "grey")
 ```
-  </div>
-</div>
-</div>
+
 
 <!-- Third top gainer-->
 ### `r tickers_change$ticker_code[3]`
@@ -360,14 +365,9 @@ chartSeries(get(top_gainer_2),
             name=tickers_change$ticker_code[3],
             theme=chartTheme('white'))
 ```
-<br>
-<p>
-  <button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#aC" aria-expanded="false" aria-controls="aC">
-   `r tickers_change$ticker_code[3]` forecast
-  </button>
-</p>
-<div class="collapse" id="aC">
-  <div class="card card-body">
+
+`r tickers_change$ticker_code[3]` forecast
+
 ```{r top-gainer-3-forecast, out.width = '100%', echo=FALSE}
 a <- get(top_gainer_3)
 nnmodel <-nnetar(a[, paste0(top_gainer_3,".Close")])
@@ -390,9 +390,6 @@ dygraph(graph_data, main = "Forecast with Neural Network") %>%
               highlightSeriesOpts = list(strokeWidth = 2)) %>%
   dyOptions(axisLineColor = "navy", gridLineColor = "grey")
 ```
-  </div>
-</div>
-</div>
 
 <!-- Fourth top gainer-->
 ### `r tickers_change$ticker_code[4]`
@@ -403,14 +400,9 @@ chartSeries(get(top_gainer_4),
             name=tickers_change$ticker_code[4],
             theme=chartTheme('white'))
 ```
-<br>
-<p>
-  <button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#aD" aria-expanded="false" aria-controls="aD">
-   `r tickers_change$ticker_code[4]` forecast
-  </button>
-</p>
-<div class="collapse" id="aD">
-  <div class="card card-body">
+
+`r tickers_change$ticker_code[4]` forecast
+
 ```{r top-gainer-4-forecast, out.width = '100%', echo=FALSE}
 a <- get(top_gainer_4)
 nnmodel <-nnetar(a[, paste0(top_gainer_4,".Close")])
@@ -433,9 +425,7 @@ dygraph(graph_data, main = "Forecast with Neural Network") %>%
               highlightSeriesOpts = list(strokeWidth = 2)) %>%
   dyOptions(axisLineColor = "navy", gridLineColor = "grey")
 ```
-  </div>
-</div>
-</div>
+
 
 <!-- Fith top gainer-->
 ### `r tickers_change$ticker_code[5]`
@@ -446,14 +436,9 @@ chartSeries(get(top_gainer_5),
             name=tickers_change$ticker_code[5],
             theme=chartTheme('white'))
 ```
-<br>
-<p>
-  <button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#aE" aria-expanded="false" aria-controls="aE">
-   `r tickers_change$ticker_code[5]` forecast
-  </button>
-</p>
-<div class="collapse" id="aE">
-  <div class="card card-body">
+
+`r tickers_change$ticker_code[5]` forecast
+
 ```{r top-gainer-5-forecast, out.width = '100%', echo=FALSE}
 a <- get(top_gainer_5)
 nnmodel <-nnetar(a[, paste0(top_gainer_5,".Close")])
@@ -476,13 +461,12 @@ dygraph(graph_data, main = "Forecast with Neural Network") %>%
               highlightSeriesOpts = list(strokeWidth = 2)) %>%
   dyOptions(axisLineColor = "navy", gridLineColor = "grey")
 ```
-  </div>
-</div>
-</div>
 
 
 ## Top gainers statistical analysis
 
+  In this section we can find a more detailed anlysis of 5 charts we saw in the previous section.Each ticker plot is given a Moving Average Convergence Divergence part, Volume graph, Commodity Channel Index and three ROCs for 200, 50 and 22 periods (in blue, red and green respectively)
+  
 ### `r tickers_change$ticker_code[1]` analysis
 ```{r top-gainer-statistical-a, out.width = '100%', echo=FALSE}
 
@@ -512,7 +496,7 @@ chartSeries(get(top_gainer_2), theme="white",
 ### `r tickers_change$ticker_code[3]` analysis
 ```{r top-gainer-statistical-c, out.width = '100%', echo=FALSE}
 
-chartSeries(get(top_gainer_1), theme="white",
+chartSeries(get(top_gainer_3), theme="white",
             name=tickers_change$ticker_code[3],
             type = c("auto", "matchsticks"), 
             show.grid = TRUE,
@@ -525,7 +509,7 @@ chartSeries(get(top_gainer_1), theme="white",
 ### `r tickers_change$ticker_code[4]` analysis
 ```{r top-gainer-statistical-d, out.width = '100%', echo=FALSE}
 
-chartSeries(get(top_gainer_1), theme="white",
+chartSeries(get(top_gainer_4), theme="white",
             name=tickers_change$ticker_code[4],
             type = c("auto", "matchsticks"), 
             show.grid = TRUE,
@@ -538,7 +522,7 @@ chartSeries(get(top_gainer_1), theme="white",
 ### `r tickers_change$ticker_code[5]` analysis
 ```{r top-gainer-statistical-e, out.width = '100%', echo=FALSE}
 
-chartSeries(get(top_gainer_1), theme="white",
+chartSeries(get(top_gainer_5), theme="white",
             name=tickers_change$ticker_code[5],
             type = c("auto", "matchsticks"), 
             show.grid = TRUE,
@@ -548,9 +532,182 @@ chartSeries(get(top_gainer_1), theme="white",
                  addROC(n=200,col = 'blue'),addROC(n=50,col = 'red'),addROC(n=22,col = 'green'))) # rate of change
 ```
 
+# Top gainers simple trading strategy results
+
+  One of the most common question we always ask ourselves is how well we would have done by investing in a certain stock. In this part we showcase a simple trading strategy for each of the top 5 gainers. Strategy is based on Variable SMA.
+```{r investment-strategies-libs, include=FALSE}
+library(PerformanceAnalytics) # performance and risk management
+library(TTR)
+library(knitr)
+```
+
+### Investment in `r tickers_change$ticker_code[1]`
+
+```{r inv-strategy-1, out.width = '100%', echo=FALSE}
+data <- get(top_gainer_1)
+data <- data[,4]
+sma <- SMA(Cl(data), n=50)
+macd <- MACD(data, nFast=12, nSlow=26, nSig=50, maType=SMA, percent = FALSE)
+signal <- Lag(ifelse(macd$macd < macd$signal, -1, 1))
+returns <- ROC(data)*signal
+returns <- na.omit(returns)
+portfolio <- exp(cumsum(returns))
+charts.PerformanceSummary(returns, main = "Performance Summary Chart")
+```
+
+### Investment in `r tickers_change$ticker_code[2]`
+
+```{r inv-strategy-2, out.width = '100%', echo=FALSE}
+data <- get(top_gainer_2)
+data <- data[,4]
+sma <- SMA(Cl(data), n=50)
+macd <- MACD(data, nFast=12, nSlow=26, nSig=50, maType=SMA, percent = FALSE)
+signal <- Lag(ifelse(macd$macd < macd$signal, -1, 1))
+returns <- ROC(data)*signal
+returns <- na.omit(returns)
+portfolio <- exp(cumsum(returns))
+charts.PerformanceSummary(returns, main = "Performance Summary Chart")
+```
+
+### Investment in `r tickers_change$ticker_code[3]`
+
+```{r inv-strategy-3, out.width = '100%', echo=FALSE}
+data <- get(top_gainer_3)
+data <- data[,4]
+sma <- SMA(Cl(data), n=50)
+macd <- MACD(data, nFast=12, nSlow=26, nSig=50, maType=SMA, percent = FALSE)
+signal <- Lag(ifelse(macd$macd < macd$signal, -1, 1))
+returns <- ROC(data)*signal
+returns <- na.omit(returns)
+portfolio <- exp(cumsum(returns))
+charts.PerformanceSummary(returns, main = "Performance Summary Chart")
+```
+
+### Investment in `r tickers_change$ticker_code[4]`
+
+```{r inv-strategy-4, out.width = '100%', echo=FALSE}
+data <- get(top_gainer_1)
+data <- data[,4]
+sma <- SMA(Cl(data), n=50)
+macd <- MACD(data, nFast=12, nSlow=26, nSig=50, maType=SMA, percent = FALSE)
+signal <- Lag(ifelse(macd$macd < macd$signal, -1, 1))
+returns <- ROC(data)*signal
+returns <- na.omit(returns)
+portfolio <- exp(cumsum(returns))
+charts.PerformanceSummary(returns, main = "Performance Summary Chart")
+```
+
+### Investment in `r tickers_change$ticker_code[5]`
+
+```{r inv-strategy-5, out.width = '100%', echo=FALSE}
+data <- get(top_gainer_1)
+data <- data[,4]
+sma <- SMA(Cl(data), n=50)
+macd <- MACD(data, nFast=12, nSlow=26, nSig=50, maType=SMA, percent = FALSE)
+signal <- Lag(ifelse(macd$macd < macd$signal, -1, 1))
+returns <- ROC(data)*signal
+returns <- na.omit(returns)
+portfolio <- exp(cumsum(returns))
+charts.PerformanceSummary(returns, main = "Performance Summary Chart")
+```
+
+# Non-technical approach
+
+  A technical analysis is certainly a powerful tool but in this section we will present another approach. Because of certain limitations we face with report generating this section will only analyze a single ticker that shows biggest growth.
+
+```{r non-technical-libs, include=FALSE}
+library(dplyr)
+library(httr)
+library(jsonlite)
+library(devtools)
+library(gtrendsR)
+library(tidytext)
+library(wordcloud)
+library(lubridate)
+library(plotly)
+library(tidyr)
+library(rvest)
+library(stringr)
+library(DT)
+
+```
+
+  Here is a quick reminder of how the graph of the company with the biggest growth looks like.
+```{r top-gainer-1-plot-reminder, out.width = '100%', echo=FALSE}
+symbol <- top_gainer_1
+chartSeries(get(top_gainer_1),
+            type="line",
+            name=tickers_change$ticker_code[1],
+            theme=chartTheme('white'))
+
+```
+  
+  ## Google Trends
+  
+  And now we will gather Google Trend data on that company. Rising intrest in a company can mean many things but it certainly does mean something interesting is going on and usually interesting things mean that there is an opportunity for a good investment.
+  
+```{r google-trends, out.width = '100%', echo=FALSE, message = FALSE, warning = FALSE}
+trends <- gtrends(keyword = symbol, geo = "US", onlyInterest = TRUE)
+trends <- trends$interest_over_time %>%
+  as_data_frame() %>%
+  select(c(date, hits, keyword))
+trends$date <- as_tibble(ceiling_date(trends$date, unit = "weeks", change_on_boundary = NULL,
+                            week_start = getOption("lubridate.week.start", 1)))
+trends %>%  
+  plot_ly(x=~date, y=~hits, mode = 'lines', name = "Google Search Trends") %>%
+  layout(title = paste0("Interest over Time: ",symbol), yaxis = list(title = "hits"))
+```
+
+## News articles
+
+  However, Google Trends alone are not enough, they could be a good source of quick information. For example quick scan of all listed companies names to see which are getting more popular.To get more detailed information we employ article search from the last 30 days using an API.
+```{r articles, out.width = '100%', echo=FALSE, message = FALSE, warning = FALSE}
+library(config)
+url_overview = paste0("https://www.marketwatch.com/investing/stock/",symbol,"/profile")
+var_overview = read_html(url_overview)
+company <-  var_overview %>% 
+  html_nodes('#instrumentname') %>%
+  html_text() %>%
+  as.character()
 
 
-<!-- Boostrap scripts -->
-<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
-<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+#news API Query
+url_news = paste0("https://newsapi.org/v2/everything?q=",
+                  str_replace_all(top_gainer_1,pattern = " ", replacement = "%20"),
+                  "&from=",today()-ddays(29), #last 30 days
+                  "&sortBy=relevance&pageSize=100&language=en&apiKey=ProvideAPIKeyHere")
+
+#API json to datatable
+results <- GET(url = url_news)
+news <- content(results, "text")
+news %<>%
+  fromJSON(flatten = TRUE) %>% #flatten
+  as.data.frame() %>% #make dataframe
+  select(c(articles.title, articles.description, articles.content, articles.publishedAt))
+datatable(news)
+```
+
+## Quick sentiment analysis - word cloud
+
+  Reading all those articles can be very time consuming but thanks to sentiment analysis we can quickly create o word cloud. Obviously this part alone could be extended into tens if not hundreds of reports on one single company with use of cutting edge technology. However, only this small taste of what sentiment analysis offers is presented in this report.
+```{r word-cloud, out.width = '100%', echo=FALSE, message = FALSE, warning = FALSE}
+news_words <- news %>%
+  select(c("articles.title","articles.description", "articles.content", "articles.publishedAt")) %>%
+  unnest_tokens(word, articles.description) %>%
+  filter(!word %in% append(stop_words$word, values = "chars"), str_detect(word, "^[a-z']+$"))
+news_words$date = as_date(news_words$articles.publishedAt)
+
+words_only <- news_words %>%
+  count(word, sort =TRUE)
+
+set.seed(1)
+wordcloud(words = words_only$word, freq = words_only$n, scale=c(2,.2), max.words=50, colors=brewer.pal(8, "Dark2"))
+```
+
+
+
+
+
+
+
+
