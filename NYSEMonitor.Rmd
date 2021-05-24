@@ -4,14 +4,19 @@ author: "Igor Lapkiewicz and Filip Nowakowski"
 date: "16 05 2021"
 output:
   html_document:
-    toc: true
-    toc_float: true
     collapsed: false
     number_sections: true
+    includes:
+       in_header: myheader.html
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+#Create myheader.html
+fileConn <- file("myheader.html")
+writeLines('<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">', fileConn)
+close(fileConn)
 ```
 
 # NYSE Monitor Project
@@ -123,12 +128,14 @@ tickers <- get_tickers(2)
 ```
 
 # Sector outlook
-
-```{r treemap-chunk, out.width = '150%', echo=FALSE}
+```{r treemap-libs,include=FALSE}
 #install.packages("treemap", repos="http://cloud.r-project.org")
 #install.packages("RColorBrewer", repos="http://cloud.r-project.org")
 library(treemap)
 library(RColorBrewer)
+```
+
+```{r treemap-chunk, out.width = '100%', echo=FALSE}
 group <- colnames(tickers)
 value <- 0
 value_for_vSize <- 0
@@ -163,6 +170,24 @@ treemap(data,
 )
 ```
 
+```{r plot-libs, include=FALSE}
+library(ggplot2)
+```
+
+```{r whole-sector-plot, out.width = '100%', echo=FALSE}
+whole_sector_plot <- rowMeans(tickers, na.rm = TRUE)
+whole_sector_plot <- as.data.frame(whole_sector_plot)
+whole_sector_plot$x <- 1:length(whole_sector_plot$whole_sector_plot)
+ggplot(whole_sector_plot, aes(x=x,y=whole_sector_plot)) +
+  geom_line() +
+  theme_light() +
+  ggtitle("Whole sector index") +
+  theme(axis.title.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.text.x=element_blank())
+```
+
 ## Sector statistics
 
 ```{r simple-statistics, include=FALSE}
@@ -185,4 +210,347 @@ sector_avg <- mean(sector_avg)
 | __Avarege gainers change__  | __Average losers change__  | __Average Sector change__  |
 | `r gainers_avg`%  | `r losers_avg`%   | `r sector_avg`% |
 
-Number of gainers: 15            Number of losers: 45              Total: 60
+# Top gainers
+```{r top-gainers, include=FALSE}
+
+group <- colnames(tickers)
+tickers_change <- 0
+for (ticker in group ){
+  #vector of percentage change for display
+  number <- as.numeric(last(tickers[, paste0(ticker)])) / as.numeric(first(tickers[, paste0(ticker)]))
+  number <- number * 100
+  number <- round(number,digits=2)
+  tickers_change <- c(tickers_change,number)
+
+}
+tickers_change <- tickers_change[-(1:1)]
+tickers_change <- as.data.frame(tickers_change)
+tickers_change$ticker_code <- group
+colnames(tickers_change) <- c("change", "ticker_code")
+tickers_change <- tickers_change[order(-tickers_change$change),]
+
+#First top gainer
+getSymbols(tickers_change$ticker_code[1], from="2020-01-01")
+
+assign("top_gainer_1", tickers_change$ticker_code[1])
+percet_change_1 <- tickers_change$change[1] -100
+#Second top gainer
+getSymbols(tickers_change$ticker_code[2], from="2020-01-01")
+
+assign("top_gainer_2", tickers_change$ticker_code[2])
+percet_change_2 <- tickers_change$change[2] -100
+#Third top gainer
+getSymbols(tickers_change$ticker_code[3], from="2020-01-01")
+
+assign("top_gainer_3", tickers_change$ticker_code[3])
+percet_change_3 <- tickers_change$change[3] -100
+#Fourth top gainer
+getSymbols(tickers_change$ticker_code[4], from="2020-01-01")
+
+assign("top_gainer_4", tickers_change$ticker_code[4])
+percet_change_4 <- tickers_change$change[4] -100
+#Fith top gainer
+getSymbols(tickers_change$ticker_code[5], from="2020-01-01")
+
+assign("top_gainer_5", tickers_change$ticker_code[5])
+percet_change_5 <- tickers_change$change[5] -100
+
+```
+
+
+```{r libraries-for-forecast, include=FALSE}
+library("dygraphs")
+library(forecast)
+```
+
+
+## Top 5 stocks with biggest gains
+<!-- First top gainer-->
+### `r tickers_change$ticker_code[1]`
+<p> `r tickers_change$ticker_code[1]` value changed by `r percet_change_1`%</p>
+```{r top-gainer-1, out.width = '100%', echo=FALSE}
+chartSeries(get(top_gainer_1),
+            type="line",
+            name=tickers_change$ticker_code[1],
+            theme=chartTheme('white'))
+```
+<br>
+<p>
+  <button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#aA" aria-expanded="false" aria-controls="aA">
+   `r tickers_change$ticker_code[1]` forecast
+  </button>
+</p>
+<div class="collapse" id="aA">
+  <div class="card card-body">
+```{r top-gainer-1-forecast, out.width = '100%', echo=FALSE}
+a <- get(top_gainer_1)
+nnmodel <-nnetar(a[, paste0(top_gainer_1,".Close")])
+nnmodel_forecast <-forecast(nnmodel,h=36,PI=T)
+
+data <- nnmodel_forecast$x
+lower <- nnmodel_forecast$lower[,2]
+upper <- nnmodel_forecast$upper[,2]
+pforecast <- nnmodel_forecast$mean
+graph_data <- cbind(data, lower, upper,
+                    pforecast)
+
+dygraph(graph_data, main = "Forecast with Neural Network") %>% 
+  dyRangeSelector() %>% 
+  dySeries(name = "data", label = "Recorded value") %>%
+  dySeries(c("lower","pforecast","upper"), label = "Forecast") %>%
+  dyLegend(show = "always", hideOnMouseOut = FALSE) %>%
+  dyAxis("y", label = "Value in USD") %>%
+  dyHighlight(highlightCircleSize = 5,
+              highlightSeriesOpts = list(strokeWidth = 2)) %>%
+  dyOptions(axisLineColor = "navy", gridLineColor = "grey")
+```
+  </div>
+</div>
+</div>
+
+<!-- Second top gainer-->
+### `r tickers_change$ticker_code[2]`
+<p> `r tickers_change$ticker_code[2]` value changed by `r percet_change_2`%</p>
+```{r top-gainer-2, out.width = '100%', echo=FALSE}
+chartSeries(get(top_gainer_2),
+            type="line",
+            name=tickers_change$ticker_code[2],
+            theme=chartTheme('white'))
+```
+<br>
+<p>
+  <button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#aB" aria-expanded="false" aria-controls="aB">
+   `r tickers_change$ticker_code[2]` forecast
+  </button>
+</p>
+<div class="collapse" id="aB">
+  <div class="card card-body">
+```{r top-gainer-2-forecast, out.width = '100%', echo=FALSE}
+a <- get(top_gainer_2)
+nnmodel <-nnetar(a[, paste0(top_gainer_2,".Close")])
+nnmodel_forecast <-forecast(nnmodel,h=36,PI=T)
+
+data <- nnmodel_forecast$x
+lower <- nnmodel_forecast$lower[,2]
+upper <- nnmodel_forecast$upper[,2]
+pforecast <- nnmodel_forecast$mean
+graph_data <- cbind(data, lower, upper,
+                    pforecast)
+
+dygraph(graph_data, main = "Forecast with Neural Network") %>% 
+  dyRangeSelector() %>% 
+  dySeries(name = "data", label = "Recorded value") %>%
+  dySeries(c("lower","pforecast","upper"), label = "Forecast") %>%
+  dyLegend(show = "always", hideOnMouseOut = FALSE) %>%
+  dyAxis("y", label = "Value in USD") %>%
+  dyHighlight(highlightCircleSize = 5,
+              highlightSeriesOpts = list(strokeWidth = 2)) %>%
+  dyOptions(axisLineColor = "navy", gridLineColor = "grey")
+```
+  </div>
+</div>
+</div>
+
+<!-- Third top gainer-->
+### `r tickers_change$ticker_code[3]`
+<p> `r tickers_change$ticker_code[3]` value changed by `r percet_change_3`%</p>
+```{r top-gainer-3, out.width = '100%', echo=FALSE}
+chartSeries(get(top_gainer_2),
+            type="line",
+            name=tickers_change$ticker_code[3],
+            theme=chartTheme('white'))
+```
+<br>
+<p>
+  <button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#aC" aria-expanded="false" aria-controls="aC">
+   `r tickers_change$ticker_code[3]` forecast
+  </button>
+</p>
+<div class="collapse" id="aC">
+  <div class="card card-body">
+```{r top-gainer-3-forecast, out.width = '100%', echo=FALSE}
+a <- get(top_gainer_3)
+nnmodel <-nnetar(a[, paste0(top_gainer_3,".Close")])
+nnmodel_forecast <-forecast(nnmodel,h=36,PI=T)
+
+data <- nnmodel_forecast$x
+lower <- nnmodel_forecast$lower[,2]
+upper <- nnmodel_forecast$upper[,2]
+pforecast <- nnmodel_forecast$mean
+graph_data <- cbind(data, lower, upper,
+                    pforecast)
+
+dygraph(graph_data, main = "Forecast with Neural Network") %>% 
+  dyRangeSelector() %>% 
+  dySeries(name = "data", label = "Recorded value") %>%
+  dySeries(c("lower","pforecast","upper"), label = "Forecast") %>%
+  dyLegend(show = "always", hideOnMouseOut = FALSE) %>%
+  dyAxis("y", label = "Value in USD") %>%
+  dyHighlight(highlightCircleSize = 5,
+              highlightSeriesOpts = list(strokeWidth = 2)) %>%
+  dyOptions(axisLineColor = "navy", gridLineColor = "grey")
+```
+  </div>
+</div>
+</div>
+
+<!-- Fourth top gainer-->
+### `r tickers_change$ticker_code[4]`
+<p> `r tickers_change$ticker_code[4]` value changed by `r percet_change_4`%</p>
+```{r top-gainer-4, out.width = '100%', echo=FALSE}
+chartSeries(get(top_gainer_4),
+            type="line",
+            name=tickers_change$ticker_code[4],
+            theme=chartTheme('white'))
+```
+<br>
+<p>
+  <button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#aD" aria-expanded="false" aria-controls="aD">
+   `r tickers_change$ticker_code[4]` forecast
+  </button>
+</p>
+<div class="collapse" id="aD">
+  <div class="card card-body">
+```{r top-gainer-4-forecast, out.width = '100%', echo=FALSE}
+a <- get(top_gainer_4)
+nnmodel <-nnetar(a[, paste0(top_gainer_4,".Close")])
+nnmodel_forecast <-forecast(nnmodel,h=36,PI=T)
+
+data <- nnmodel_forecast$x
+lower <- nnmodel_forecast$lower[,2]
+upper <- nnmodel_forecast$upper[,2]
+pforecast <- nnmodel_forecast$mean
+graph_data <- cbind(data, lower, upper,
+                    pforecast)
+
+dygraph(graph_data, main = "Forecast with Neural Network") %>% 
+  dyRangeSelector() %>% 
+  dySeries(name = "data", label = "Recorded value") %>%
+  dySeries(c("lower","pforecast","upper"), label = "Forecast") %>%
+  dyLegend(show = "always", hideOnMouseOut = FALSE) %>%
+  dyAxis("y", label = "Value in USD") %>%
+  dyHighlight(highlightCircleSize = 5,
+              highlightSeriesOpts = list(strokeWidth = 2)) %>%
+  dyOptions(axisLineColor = "navy", gridLineColor = "grey")
+```
+  </div>
+</div>
+</div>
+
+<!-- Fith top gainer-->
+### `r tickers_change$ticker_code[5]`
+<p> `r tickers_change$ticker_code[5]` value changed by `r percet_change_5`%</p>
+```{r top-gainer-5, out.width = '100%', echo=FALSE}
+chartSeries(get(top_gainer_5),
+            type="line",
+            name=tickers_change$ticker_code[5],
+            theme=chartTheme('white'))
+```
+<br>
+<p>
+  <button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#aE" aria-expanded="false" aria-controls="aE">
+   `r tickers_change$ticker_code[5]` forecast
+  </button>
+</p>
+<div class="collapse" id="aE">
+  <div class="card card-body">
+```{r top-gainer-5-forecast, out.width = '100%', echo=FALSE}
+a <- get(top_gainer_5)
+nnmodel <-nnetar(a[, paste0(top_gainer_5,".Close")])
+nnmodel_forecast <-forecast(nnmodel,h=36,PI=T)
+
+data <- nnmodel_forecast$x
+lower <- nnmodel_forecast$lower[,2]
+upper <- nnmodel_forecast$upper[,2]
+pforecast <- nnmodel_forecast$mean
+graph_data <- cbind(data, lower, upper,
+                    pforecast)
+
+dygraph(graph_data, main = "Forecast with Neural Network") %>% 
+  dyRangeSelector() %>% 
+  dySeries(name = "data", label = "Recorded value") %>%
+  dySeries(c("lower","pforecast","upper"), label = "Forecast") %>%
+  dyLegend(show = "always", hideOnMouseOut = FALSE) %>%
+  dyAxis("y", label = "Value in USD") %>%
+  dyHighlight(highlightCircleSize = 5,
+              highlightSeriesOpts = list(strokeWidth = 2)) %>%
+  dyOptions(axisLineColor = "navy", gridLineColor = "grey")
+```
+  </div>
+</div>
+</div>
+
+
+## Top gainers statistical analysis
+
+### `r tickers_change$ticker_code[1]` analysis
+```{r top-gainer-statistical-a, out.width = '100%', echo=FALSE}
+
+chartSeries(get(top_gainer_1), theme="white",
+            name=tickers_change$ticker_code[1],
+            type = c("auto", "matchsticks"), 
+            show.grid = TRUE,
+            major.ticks='auto', minor.ticks=TRUE,
+            multi.col = FALSE,
+            TA=c(addMACD(),addVo(),addCCI(),addSMA(n=200,col = 'blue'),addSMA(n=50,col = 'red'),addSMA(n=22,col = 'green'),
+                 addROC(n=200,col = 'blue'),addROC(n=50,col = 'red'),addROC(n=22,col = 'green'))) # rate of change
+```
+
+### `r tickers_change$ticker_code[2]` analysis
+```{r top-gainer-statistical-b, out.width = '100%', echo=FALSE}
+
+chartSeries(get(top_gainer_2), theme="white",
+            name=tickers_change$ticker_code[2],
+            type = c("auto", "matchsticks"), 
+            show.grid = TRUE,
+            major.ticks='auto', minor.ticks=TRUE,
+            multi.col = FALSE,
+            TA=c(addMACD(),addVo(),addCCI(),addSMA(n=200,col = 'blue'),addSMA(n=50,col = 'red'),addSMA(n=22,col = 'green'),
+                 addROC(n=200,col = 'blue'),addROC(n=50,col = 'red'),addROC(n=22,col = 'green'))) # rate of change
+```
+
+### `r tickers_change$ticker_code[3]` analysis
+```{r top-gainer-statistical-c, out.width = '100%', echo=FALSE}
+
+chartSeries(get(top_gainer_1), theme="white",
+            name=tickers_change$ticker_code[3],
+            type = c("auto", "matchsticks"), 
+            show.grid = TRUE,
+            major.ticks='auto', minor.ticks=TRUE,
+            multi.col = FALSE,
+            TA=c(addMACD(),addVo(),addCCI(),addSMA(n=200,col = 'blue'),addSMA(n=50,col = 'red'),addSMA(n=22,col = 'green'),
+                 addROC(n=200,col = 'blue'),addROC(n=50,col = 'red'),addROC(n=22,col = 'green'))) # rate of change
+```
+
+### `r tickers_change$ticker_code[4]` analysis
+```{r top-gainer-statistical-d, out.width = '100%', echo=FALSE}
+
+chartSeries(get(top_gainer_1), theme="white",
+            name=tickers_change$ticker_code[4],
+            type = c("auto", "matchsticks"), 
+            show.grid = TRUE,
+            major.ticks='auto', minor.ticks=TRUE,
+            multi.col = FALSE,
+            TA=c(addMACD(),addVo(),addCCI(),addSMA(n=200,col = 'blue'),addSMA(n=50,col = 'red'),addSMA(n=22,col = 'green'),
+                 addROC(n=200,col = 'blue'),addROC(n=50,col = 'red'),addROC(n=22,col = 'green'))) # rate of change
+```
+
+### `r tickers_change$ticker_code[5]` analysis
+```{r top-gainer-statistical-e, out.width = '100%', echo=FALSE}
+
+chartSeries(get(top_gainer_1), theme="white",
+            name=tickers_change$ticker_code[5],
+            type = c("auto", "matchsticks"), 
+            show.grid = TRUE,
+            major.ticks='auto', minor.ticks=TRUE,
+            multi.col = FALSE,
+            TA=c(addMACD(),addVo(),addCCI(),addSMA(n=200,col = 'blue'),addSMA(n=50,col = 'red'),addSMA(n=22,col = 'green'),
+                 addROC(n=200,col = 'blue'),addROC(n=50,col = 'red'),addROC(n=22,col = 'green'))) # rate of change
+```
+
+
+
+<!-- Boostrap scripts -->
+<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
