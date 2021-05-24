@@ -8,4 +8,4 @@ Project description: An automated report that generates summaries of current or 
 
 Report parts:
 
-Avaible sectors:
+Available sectors:
